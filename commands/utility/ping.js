@@ -5,6 +5,6 @@ module.exports = {
 		.setName('ping')
 		.setDescription('Replies with Pong'),
 	async execute(interaction) {
-		await interaction.reply('kys');
+		await interaction.reply('https://tenor.com/view/die-idiot-idiot-getting-hurt-bigbuddiboi-fail-gif-19327787');
 	},
 };
