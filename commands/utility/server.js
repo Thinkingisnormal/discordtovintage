@@ -1,9 +1,10 @@
-const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, Component } = require('discord.js');
-const wait = require('node:timers/promises').setTimeout;
-const {exec, execFile, execFileSync, spawn} = require('node:child_process');
+const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle,  } = require('discord.js');
+const {spawn} = require('node:child_process');
 const { stdout, stderr } = require('node:process');
+const { setTimeout } = require('node:timers/promises');
 
 const serverURL = 'G:\\Vintage Story\\VintagestoryServer.exe' // File goes here
+
 
 
 
@@ -13,11 +14,13 @@ const startButton = new ButtonBuilder()
 .setCustomId('startButton')
 .setLabel('Start')
 .setStyle(ButtonStyle.Success)
+.setDisabled(false)
 
 const stopButton = new ButtonBuilder()
 .setCustomId('stopButton')
 .setLabel('Stop')
 .setStyle(ButtonStyle.Danger)
+.setDisabled(true)
 
 const row = new ActionRowBuilder()
 .addComponents(startButton,stopButton)
@@ -51,9 +54,8 @@ module.exports = {
 				}
 			} 
 			else if (confirmation.customId === 'stopButton') {
-				serverStop();
-				console.log("ending server");//add endserver() here
-				await confirmation.update({ content: 'Server stopping', components: [] });
+				serverStop(interaction);
+				await confirmation.update({ content: 'Now awaiting autosave to stop server...', components: [] });
 				isStarted = false;
 				
 			}
@@ -65,41 +67,69 @@ module.exports = {
 
 // serverStart() and serverStop() here
 
-async function serverStart() {
+ 
+
+function serverStart() {
 	
 	const defaults = {
-		cwd: undefined
+		cwd: undefined,
+		stdio : [
+			'pipe', 
+			'pipe',
+			'pipe' 
+		],
 		
 	  }; 
 
 	if (isStarted === false) {
 		isStarted = true;
-		
-		ls = spawn(serverURL,[], defaults );
+		startButton.setDisabled(true);
+		stopButton.setDisabled(false);
+
+		globalThis.ls = spawn(serverURL,[], defaults );
 		ls.stdout.on('data', (data) => {
-			console.log(`stdout: ${data}`);
+			let stdoutData = data
+			console.log(`stdout: ${stdoutData}`);
 		  });
 		  
 		  ls.stderr.on('data', (data) => {
 			console.error(`stderr: ${data}`);
+			startButton.setDisabled(false);
+			stopButton.setDisabled(true);
 		  });
-		  
 		  ls.on('close', (code) => {
 			console.log(`child process exited with code ${code}`);
+			startButton.setDisabled(false);
+			stopButton.setDisabled(true);
 		  });
+		  
 		  
 	}
 	else {
 		console.log("isStarted = true");
-		await interaction.followUp({content: "Server already started lol", ephemeral: true});
+		interaction.followUp({content: "Server already started lol", ephemeral: true});
 	}
-}; // currently not working will fix later - 10/24/24
-async function serverStop() { 
-	isStarted = false;
-	console.log("handling serverStop()");
-	if (lss){
-	ls.stdin.write('/stop\n');
-	ls.stdin.end(); 
-	console.log("ls is here");
-}
 };
+
+// when function is called, it waits til stdout states the server is done autosaving, then (hopefully) the subproccess is no safe to
+ async function serverStop(interaction) { 
+
+	if (!ls) {
+		interaction.followUp('wait til server up pls');
+		return;
+	}
+	if(ls) {
+		ls.stdout.on('data', (data) => {
+			let str = data.toString();
+			console.log(`thingy: ${str}`)
+				if (str.includes('[Server Event] Offthread save of savegame done') && !str.includes('[Server Chat]')) {
+					ls.kill();
+					isStarted = false;
+					console.log('String included, now killing process');
+					startButton.setDisabled(false);
+					stopButton.setDisabled(true);
+				}
+			
+		})
+	}
+}
