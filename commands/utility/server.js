@@ -111,7 +111,7 @@ function serverStart() {
 	}
 };
 
-// when function is called, it waits til stdout states the server is done autosaving, then (hopefully) the subproccess is no safe to
+// when function is called, it waits til stdout states the server is done autosaving, then (hopefully) kills the subprocess when its safe to do so.
  async function serverStop(interaction) { 
 
 	if (!ls) {
